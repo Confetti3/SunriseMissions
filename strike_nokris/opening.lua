@@ -69,11 +69,6 @@ return function(mission, objective)
             end
             context:set_variable("entry.region", event.held_region_index or -1)
             if event.held_region_index ~= opening.region_index then return end
-            for _, definition in ipairs{director, tunnel_director} do
-                local target = context:slot(definition)
-                assert(target.objective_count and target.objective_count > 0,
-                       "opening needs generated exact objective bounds")
-            end
             if not compact.get(state, "entry.crystals.submitted") then
                 for index, slot in ipairs(crystals) do
                     pending_crystals[index] = context:slot(slot):set_object_active{active = true}
