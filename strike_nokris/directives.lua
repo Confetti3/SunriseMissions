@@ -199,7 +199,6 @@ return function(mission, controller)
     local recovery_intro, recovery_cleanup, recovery_boss_retry_active, recovery_waiting_region
     local held, source = nil, nil
     local pending
-    local lane = 0
 
     local function save(context)
         context:set_variable(FLOW_KEY, encode(flow))
@@ -483,9 +482,7 @@ return function(mission, controller)
     local function submit_set(context, index)
         local slot = exact_owner(context)
         local directive = authored(index)
-        local previous
-        if flow.step > 0 then previous = authored(flow.step); lane = 1 - lane end
-        local request = slot:set_directive{directive=directive, state=0, lane=lane, previous=previous}
+        local request = slot:set_directive{directive=directive, state=0}
         assert(request, "directive request did not return a request key")
         pending = {request=request, operation="set0", index=index, source=source, region=held}
         flow.operation, flow.status, flow.target = "set0", "pending", index
@@ -498,7 +495,7 @@ return function(mission, controller)
         if state:variable("nokris.capability") ~= "model_complete" then return false end
         local slot = exact_owner(context)
         local directive = authored(9)
-        local request = slot:set_directive{directive=directive, state=1, lane=lane}
+        local request = slot:set_directive{directive=directive, state=1}
         assert(request, "directive completion request did not return a request key")
         pending = {request=request, operation="set1", index=9, source=source, region=held}
         flow.operation, flow.status, flow.target = "set1", "pending", 9
@@ -510,7 +507,7 @@ return function(mission, controller)
 
     local function submit_clear(context)
         local slot = exact_owner(context)
-        local request = slot:set_directive{directive=authored(9), state=-1, lane=lane}
+        local request = slot:clear_directives()
         assert(request, "directive clear request did not return a request key")
         pending = {request=request, operation="clear", index=9, source=source, region=held}
         flow.operation, flow.status, flow.target = "clear", "pending", 0
