@@ -57,8 +57,7 @@ return function(mission,model,activation,support,objective,context,state,prefix,
     end
     local function assign(member,group,expected)
         local job=jobs[member]
-        job.request=assert(context:squad(mission.Squad[job.definition.symbol]):assign_combat_objective{
-            objective=director,revision=1,expected_revision=expected,task_group=group})
+        job.request=assert(objective.assign(context,mission,mission.Slot[job.definition.symbol],director,group))
         job.observed.group=group; save_row(member)
     end
     local function choose(member)

@@ -262,23 +262,17 @@ return function(mission, objective)
                         if event.objective_revision ~= nil and event.objective_revision ~= 0 then
                             return
                         end
-                        local request = context:squad(definition.squad):assign_combat_objective{
-                            objective = target, revision = 1, expected_revision = 0,
-                            task_group = -1,
-                        }
+                        local request = objective.assign(context, mission, definition.slot, target, -1)
                         pending[index] = {request = request}
                         ledger.adopt(context, key(index), event.source_generation,
                             event.sense_generation, event.spawn_generation, 1, -1)
                         return
                     end
                     local current = ledger.get(state, key(index), "group") or -1
-                    local selected = objective.choose(event, target.objective_count,
+                    local selected = objective.choose(event, objective.count(mission, target),
                                                       current, requested)
                     if selected ~= nil and selected ~= current then
-                        local request = context:squad(definition.squad):assign_combat_objective{
-                            objective = target, revision = requested,
-                            expected_revision = requested, task_group = selected,
-                        }
+                        local request = objective.assign(context, mission, definition.slot, target, selected)
                         pending[index] = {request = request}
                         ledger.set(context, state, key(index), "group", selected)
                     end

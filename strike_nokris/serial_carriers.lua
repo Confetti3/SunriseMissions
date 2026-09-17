@@ -28,9 +28,8 @@ return function(mission,objective,controller,definition)
         if current.assigned then selected=objective.choose({objective_revision=observed.revision,
             task_costs=observed.costs},definition.objective_count,current.group,1) end
         if not current.assigned or (selected~=nil and selected~=current.group) then
-            current.assignment=context:squad(mission.Squad[current.name]):assign_combat_objective{
-                objective=context:slot(mission.Slot[definition.director]),revision=1,
-                expected_revision=current.assigned and 1 or 0,task_group=selected}
+            current.assignment=objective.assign(context,mission,mission.Slot[current.name],
+                context:slot(mission.Slot[definition.director]),selected)
             current.group=selected; current.assigned=true
         end
     end

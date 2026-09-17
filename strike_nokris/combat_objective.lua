@@ -30,4 +30,30 @@ function objective.choose(event, authored_count, current_group, requested_revisi
     return selected
 end
 
+-- Upstream assigns objectives on the squad's slot with generated task-group handles and gates
+-- revisions natively, so the script-side revision arguments are gone.
+--- @return The generated task groups of an objective slot and how many it authors.
+function objective.groups(mission, target)
+    local name = string.upper(target.name)
+    local groups = assert(mission.TaskGroup[name], "no task groups for " .. name)
+    assert(groups.GROUP_0 and groups.GROUP_0.slot_row == target.row, "task groups name another slot")
+    local count = 0
+    while groups["GROUP_" .. count] ~= nil do count = count + 1 end
+    return groups, count
+end
+
+function objective.count(mission, target)
+    local _, count = objective.groups(mission, target)
+    return count
+end
+
+--- Assigns the objective; a negative group binds the objective without a task group.
+function objective.assign(context, mission, squad_slot, target, group)
+    local task_group
+    if group and group >= 0 then
+        task_group = assert(objective.groups(mission, target)["GROUP_" .. group], "task group " .. group)
+    end
+    return context:slot(squad_slot):assign_combat_objective{objective = target, task_group = task_group}
+end
+
 return objective

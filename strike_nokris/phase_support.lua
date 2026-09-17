@@ -70,8 +70,7 @@ return function(mission,model,activation,objective,context,state,prefix,phases)
     local function assign(index,group,expected)
         local job=jobs[index]
         if identity.frozen or job.suspended or job.request or job.observed.alive<=0 then return end
-        job.request=context:squad(assert(mission.Squad[job.definition.symbol])):assign_combat_objective{
-            objective=director,revision=1,expected_revision=expected,task_group=group}
+        job.request=objective.assign(context,mission,assert(mission.Slot[job.definition.symbol]),director,group)
         assert(job.request,"objective assignment must return a request key")
         job.assigned=true
         job.observed.group=group; save_row(index)

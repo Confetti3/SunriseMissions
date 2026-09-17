@@ -169,9 +169,7 @@ return function(mission, objective, controller, definition)
         local selected = objective.choose({objective_revision=job.observed.revision,
             task_costs=job.observed.costs}, definition.objective_count, job.group, 1)
         if selected ~= nil and selected ~= job.group then
-            job.request = context:squad(squads[index].squad):assign_combat_objective{
-                objective=context:slot(director), revision=1, expected_revision=1, task_group=selected,
-            }
+            job.request = objective.assign(context, mission, squads[index].slot, context:slot(director), selected)
             job.group = selected
         end
     end
@@ -362,9 +360,7 @@ return function(mission, objective, controller, definition)
                 if not job.assigned then
                     -- The first request is issued once per encounter. A restart never repeats
                     -- it merely because its transport receipt has not returned yet.
-                    job.request = context:squad(squad.squad):assign_combat_objective{
-                        objective=context:slot(director), revision=1, expected_revision=0, task_group=-1,
-                    }
+                    job.request = objective.assign(context, mission, squad.slot, context:slot(director), -1)
                     job.group, job.assigned = -1, true
                 elseif job.admitted then
                     choose(context, state, index)

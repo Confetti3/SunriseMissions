@@ -41,11 +41,9 @@ return function(mission, objective, controller)
         local combat = context:slot(director)
         -- Copy scalar observations, never retain event userdata beyond its callback.
         local selected = objective.choose({objective_revision=adopted.revision,
-            task_costs={[1]=adopted.cost1,[2]=adopted.cost2}}, combat.objective_count, group, 1)
+            task_costs={[1]=adopted.cost1,[2]=adopted.cost2}}, objective.count(mission, combat), group, 1)
         if selected ~= nil and selected ~= group then
-            objective_request = context:squad(squad):assign_combat_objective{
-                objective=combat, revision=1, expected_revision=1, task_group=selected,
-            }
+            objective_request = objective.assign(context, mission, squad_slot, combat, selected)
             group = selected
             status(context, "objective_pending")
         end
@@ -230,9 +228,7 @@ return function(mission, objective, controller)
                 alive = event.alive_count, revision = event.objective_revision,
                 available = event.population_available == true,
                 cost1 = cost1, cost2 = cost2}
-            objective_request = context:squad(squad):assign_combat_objective{
-                objective = combat, revision = 1, expected_revision = 0, task_group = -1,
-            }
+            objective_request = objective.assign(context, mission, squad_slot, combat, -1)
             group = -1
             status(context, "objective_pending")
         else
