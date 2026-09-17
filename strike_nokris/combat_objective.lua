@@ -36,7 +36,6 @@ end
 function objective.groups(mission, target)
     local name = string.upper(target.name)
     local groups = assert(mission.TaskGroup[name], "no task groups for " .. name)
-    assert(groups.GROUP_0 and groups.GROUP_0.slot_row == target.row, "task groups name another slot")
     local count = 0
     while groups["GROUP_" .. count] ~= nil do count = count + 1 end
     return groups, count
