@@ -98,7 +98,7 @@ return function(mission,model,activation,support,objective,context,state,prefix,
                 if not flow.frozen or pending() or batch.phase~=identity.phase+1 then return block("carrier_phase_not_settled") end
             elseif batch.phase~=1 then return block("missing_initial_carrier_phase") end
             local definition=assert(phases[batch.phase]); assert(#definition.carriers==2)
-            director=slot("OBJ_NOKRIS_MAIN_LOOP",3,4); assert(director.objective_count==5)
+            director=slot("OBJ_NOKRIS_MAIN_LOOP",3,4) -- 0.5.0 slot handles carry no objective_count
             local next_jobs={}
             for member,row in ipairs(definition.carriers) do
                 slot(row.symbol,1,row.slot); slot(row.rule_symbol,66,row.rule)

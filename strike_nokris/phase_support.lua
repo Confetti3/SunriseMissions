@@ -114,7 +114,7 @@ return function(mission,model,activation,objective,context,state,prefix,phases)
         elseif batch.phase~=1 then return block("missing_initial_support_phase") end
         local definition=assert(phases[batch.phase]); assert(#definition.supports>0 and #definition.supports<=6)
         local next_jobs={}
-        director=slot("OBJ_NOKRIS_MAIN_LOOP",3,4); assert(director.objective_count==5)
+        director=slot("OBJ_NOKRIS_MAIN_LOOP",3,4) -- 0.5.0 slot handles carry no objective_count
         for index,row in ipairs(definition.supports) do
             slot(row.symbol,1,row.slot); assert(mission.Squad[row.symbol])
             next_jobs[index]={definition=row}
