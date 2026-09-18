@@ -1,5 +1,6 @@
 -- Normal-solo entry reconstruction for the build-86657 gauntlet occurrence.
 -- The Simmumah exit is an explicit continuous-population policy, not an authored death claim.
+-- Numbered siblings that share a used squad's spawn rule belong to the same wave; _ALT squads are alternates.
 local population = require("strike_nokris.entry_population")
 return function(mission, objective, controller)
     local region = assert(mission.states.STATE_80F729E1_000B_0000_80F76DF7).region_index
@@ -16,7 +17,7 @@ return function(mission, objective, controller)
         {name="icy_approach",kind=31,index=38,volume_index=102,
             trigger="PT_START_SUPPORT",volume="TV_START_SUPPORT",
             director="OBJ_RITUAL_GAUNTLET_ENTRANCE",director_index=28,objective_count=6,
-            squads={"SQ_ENTRANCE_START","SQ_ENTRANCE_SUPPORT"},squad_indices={2,3},
+            squads={"SQ_ENTRANCE_START","SQ_ENTRANCE_SUPPORT","SQ_ENTRANCE_SUPPORT_1"},squad_indices={2,3,4},
             requires={"later.start_support.entered"}},
         {name="outer_doorway",kind=31,index=39,volume_index=104,
             trigger="PT_ENTRANCE_START",volume="SLOT_0068_80F734C7",
@@ -37,7 +38,7 @@ return function(mission, objective, controller)
         {name="thrall_surge",kind=31,capture_arrival=true,index=42,volume_index=109,
             trigger="PT_GAUNTLET_STOP_PRAYING",volume="SLOT_006D_80F734C7",
             director="OBJ_RITUAL_GAUNTLET",director_index=29,objective_count=9,
-            squads={"SQ_MAIN_EXIT_THRALL","SQ_MAIN_EXIT_THRALL_2"},squad_indices={18,20},
+            squads={"SQ_MAIN_EXIT_THRALL","SQ_MAIN_EXIT_THRALL_1","SQ_MAIN_EXIT_THRALL_2"},squad_indices={18,19,20},
             arm_ready=function(state)
                 return state:variable("later.simmumah.entered")==true
             end,
@@ -50,20 +51,23 @@ return function(mission, objective, controller)
             end},
         {name="yellow_chambers",
             director="OBJ_RITUAL_TUNNEL",director_index=30,objective_count=5,
-            squads={"SQ_TUNNEL_START"},squad_indices={22},
+            squads={"SQ_TUNNEL_START","SQ_TUNNEL_START_1","SQ_TUNNEL_START_2"},squad_indices={22,23,24},
             -- The type-30 occupancy monitor (PM_GAUNTLET_SPAWN_EXIT_THRALLS, slot 43) never reports a
             -- change under the 0.5 DLL. Place the tunnel knights when the player leaves the summoning room.
             ready=function(state) return state:variable("later.thrall_surge.entered")==true end},
         {name="chamber_support",kind=31,capture_arrival=true,index=44,volume_index=111,
             trigger="PT_TUNNEL_SPAWN_SUPPORT",volume="SLOT_006F_80F734C7",
             director="OBJ_RITUAL_TUNNEL",director_index=30,objective_count=5,
-            squads={"SQ_TUNNEL_SUPPORT"},squad_indices={25},
+            squads={"SQ_TUNNEL_SUPPORT","SQ_TUNNEL_SUPPORT_1"},squad_indices={25,26},
             arm_ready=function(state)
                 return state:variable("later.thrall_surge.entered")==true
             end,
             requires={"later.yellow_chambers.entered"}},
     }
+    local optional={SQ_ENTRANCE_SUPPORT_1=true,SQ_MAIN_EXIT_THRALL_1=true,
+        SQ_TUNNEL_START_1=true,SQ_TUNNEL_START_2=true,SQ_TUNNEL_SUPPORT_1=true}
     for _, definition in ipairs(definitions) do
+        definition.optional = optional
         definition.region, definition.registry, definition.object = region, 0x9E1E5EF6, 0x80F734C7
         controller = population(mission, objective, controller, definition)
     end

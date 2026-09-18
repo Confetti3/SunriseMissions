@@ -12,7 +12,9 @@ return function(mission, objective, controller, definition)
     local director = assert(mission.Slot[definition.director])
     local squads = {}
     for index, name in ipairs(definition.squads) do
-        squads[index] = {squad=assert(mission.Squad[name]), slot=assert(mission.Slot[name])}
+        squads[index] = {squad=assert(mission.Squad[name]), slot=assert(mission.Slot[name]),
+            -- An optional squad that cannot be resolved or placed is skipped, never a route block.
+            optional=definition.optional~=nil and definition.optional[name]==true}
     end
     assert(#squads > 0 and #squads <= 6)
     local initialized, held, source, submitted, armed, entered, arm_sequence
@@ -110,7 +112,12 @@ return function(mission, objective, controller, definition)
         entered = true
         context:set_variable(prefix .. "entered", true)
         for index, squad in ipairs(squads) do
-            jobs[index] = {placement=context:squad(squad.squad):place{}}
+            if squad.optional then
+                local ok, request = pcall(function() return context:squad(squad.squad):place{} end)
+                jobs[index] = ok and request and {placement=request} or {skipped=true}
+            else
+                jobs[index] = {placement=context:squad(squad.squad):place{}}
+            end
         end
         status(context, "placement_pending")
         diagnostic(context)
@@ -270,7 +277,10 @@ return function(mission, objective, controller, definition)
                     local assignment = job.request and event.request_key:matches(job.request)
                     if placement or assignment then
                         if placement then receipt = event.outcome; diagnostic(context) end
-                        if event.source_generation ~= source or event.outcome ~= "transport_staged" then
+                        if placement and squads[index].optional and event.source_generation == source
+                            and event.outcome ~= "transport_staged" then
+                            jobs[index] = {skipped=true}
+                        elseif event.source_generation ~= source or event.outcome ~= "transport_staged" then
                             stop(context, "output_refused")
                         elseif placement then
                             job.placement, job.transported = nil, true
@@ -369,8 +379,8 @@ return function(mission, objective, controller, definition)
                 end
                 local zero = #jobs == #squads
                 for _, member in ipairs(jobs) do
-                    zero = zero and member.transported and member.observed
-                        and member.observed.available and member.observed.alive == 0
+                    zero = zero and (member.skipped or (member.transported and member.observed
+                        and member.observed.available and member.observed.alive == 0))
                 end
                 if zero then
                     for _, member in ipairs(jobs) do member.cleared = true end

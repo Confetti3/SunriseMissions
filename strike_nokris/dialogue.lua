@@ -7,7 +7,12 @@ return function(mission,controller,provider)
     local opening=assert(mission.states.STATE_80F729E1_0000_0000_80F729D5).region_index
     local ritual=assert(mission.states.STATE_80F729E1_000B_0000_80F76DF7).region_index
     local ordinals={assert(cues.CUE_1),assert(cues.CUE_5),assert(cues.CUE_6),assert(cues.CUE_7),
-        assert(cues.CUE_9),assert(cues.CUE_10),assert(cues.CUE_11),assert(cues.CUE_12)}
+        assert(cues.CUE_9),assert(cues.CUE_10),assert(cues.CUE_11),assert(cues.CUE_12),
+        -- Appended so the first eight keep their seen/staged bits: intel (9), relic hint (10),
+        -- chant reaction (11), and Nokris's taunts for the three protected intervals and the
+        -- final damage interval (12-15). Their timing is reconstructed, not authored.
+        assert(cues.CUE_3),assert(cues.CUE_4),assert(cues.CUE_2),
+        assert(cues.CUE_17),assert(cues.CUE_18),assert(cues.CUE_19),assert(cues.CUE_20)}
     local initialized,blocked,held,source,pending
     local seen,queued,staged=0,0,0
     local requests,applied,started,finished={},0,0,0
@@ -78,6 +83,11 @@ return function(mission,controller,provider)
                 end
             end
             if ready then remember(context,2) end
+            if compact.get(state,"entry.knight.placed") and not compact.get(state,"entry.failed") then
+                remember(context,9)
+            end
+            -- The carrier's qualified zero after living is when its relic is on the floor.
+            if state:variable("entry.knight.zero_after_alive")==true then remember(context,10) end
         elseif held==ritual then
             local start=state:variable("gstart.status")
             if state:variable("entry.gate.result")=="transport_staged"
@@ -89,13 +99,19 @@ return function(mission,controller,provider)
                     and state:variable("later."..name..".status")~="blocked"
                     and (name~="prefight" or state:variable("prefight.entry")=="arrived") then remember(context,index+3) end
             end
+            if state:variable("nokris.chant")=="transport_staged" then remember(context,11) end
             if state:variable("nokris.intro")=="transport_staged"
                 and state:variable("later.boss_entry.status")=="running" then remember(context,7) end
+            local view=controller.boss_status and controller.boss_status()
+            local model=view and not view.blocked and view.model
+            if model and model.stage=="shield" and model.phase>=1 and model.phase<=3 then
+                remember(context,11+model.phase)
+            elseif model and model.stage=="final_damage" then remember(context,15) end
             -- Cue 12 is the victory line. Only the accepted completion model selects it; a
             -- carrier/boss population zero never does.
             if state:variable("nokris.capability")=="model_complete" then remember(context,8) end
         end
-        -- Possession has no production ingress yet: a carrier population zero must not select the relic hint.
+        -- Possession has no production ingress: the opening relic hint keys on the carrier's zero instead.
     end
     local function dispatch(context)
         if pending or queued==0 then return end

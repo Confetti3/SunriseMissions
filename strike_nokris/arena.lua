@@ -86,8 +86,10 @@ return function(mission, objective, controller)
     controller = require("strike_nokris.arena_mechanics")(mission, controller, region)
     controller = require("strike_nokris.serial_carriers")(mission,objective,controller,{
         name="arena",region=region,registry=0xF236EBA9,object=0x80F733F4,
+        -- Four authored carriers on four fresh slots: a re-placed slot never reports alive on 0.5.
         squads={"SQ_KNIGHT_ARENA_LEFT_1","SQ_KNIGHT_ARENA_RIGHT_1",
-            "SQ_KNIGHT_ARENA_LEFT_1","SQ_KNIGHT_ARENA_RIGHT_1"},indices={15,19,15,19},
+            "SQ_KNIGHT_ARENA_LEFT_2","SQ_KNIGHT_ARENA_RIGHT_2"},indices={15,19,17,21},
+        fallback={[3]={squad="SQ_KNIGHT_ARENA_LEFT_1",index=15},[4]={squad="SQ_KNIGHT_ARENA_RIGHT_1",index=19}},
         director="OBJ_RITUAL_ARENA",director_index=27,objective_count=16,
         ready=function(state) return state:variable("arena.entry")=="arrived"
             and state:variable("arena.cleanup")=="disabled"
@@ -102,10 +104,32 @@ return function(mission, objective, controller)
         controller=require("strike_nokris.entry_population")(mission,objective,controller,{
             name="arena_support"..phase,region=region,registry=0xF236EBA9,object=0x80F733F4,
             director="OBJ_RITUAL_ARENA",director_index=27,objective_count=16,
-            squads={phase==2 and "SQ_PHASE_2_SUPPORT_1" or "SQ_PHASE_3_SUPPORT_1"},
-            squad_indices={phase==2 and 23 or 24},
+            squads=phase==2 and {"SQ_PHASE_2_SUPPORT_1"}
+                or {"SQ_PHASE_3_SUPPORT_1","SQ_PHASE_3_SUPPORT_2","SQ_PHASE_3_SUPPORT_3"},
+            squad_indices=phase==2 and {23} or {24,25,26},
+            optional={SQ_PHASE_3_SUPPORT_2=true,SQ_PHASE_3_SUPPORT_3=true},
             ready=function(state) return (state:variable("crystals.arena.inactive") or 0)>=threshold
                 and state:variable("arena.cleanup")=="disabled"
+                and state:variable("carriers.arena.status")~="blocked" end,
+        })
+    end
+    -- Same-wave siblings of the opening acolytes, and each carrier's authored escort. None of
+    -- these gate the exit: the door still opens on the crystals and the original populations.
+    local extras={
+        {name="arena_acolytes",squads={"SQ_ACOLYTE_ARENA_1_B","SQ_ACOLYTE_ARENA_1_C"},indices={11,12},round=0},
+        {name="arena_escort1",squads={"SQ_SUPPORT_ARENA_LEFT_1"},indices={16},round=1},
+        {name="arena_escort2",squads={"SQ_SUPPORT_ARENA_RIGHT_1"},indices={20},round=2},
+        {name="arena_escort3",squads={"SQ_SUPPORT_ARENA_LEFT_2"},indices={18},round=3},
+        {name="arena_escort4",squads={"SQ_SUPPORT_ARENA_RIGHT_2"},indices={22},round=4},
+    }
+    for _,extra in ipairs(extras) do
+        controller=require("strike_nokris.entry_population")(mission,objective,controller,{
+            name=extra.name,region=region,registry=0xF236EBA9,object=0x80F733F4,
+            director="OBJ_RITUAL_ARENA",director_index=27,objective_count=16,
+            squads=extra.squads,squad_indices=extra.indices,
+            optional={[extra.squads[1]]=true,[extra.squads[2] or extra.squads[1]]=true},
+            ready=function(state) return state:variable("later.arena.entered")==true
+                and (state:variable("carriers.arena.round") or 0)>=extra.round
                 and state:variable("carriers.arena.status")~="blocked" end,
         })
     end

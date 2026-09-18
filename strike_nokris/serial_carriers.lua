@@ -47,14 +47,20 @@ return function(mission,objective,controller,definition)
             if round==#definition.squads then status(context,"complete"); return end
         elseif not definition.ready(state) then return end
         round=round+1
-        local name=definition.squads[round]
-        slot(context,name,definition.indices[round])
+        local name,index=definition.squads[round],definition.indices[round]
+        -- A round may name a fallback (the earlier, proven carrier of its side) for a squad the
+        -- catalog refuses to resolve; a crashed VM would otherwise end the strike here.
+        local fallback=definition.fallback and definition.fallback[round]
+        if fallback and not pcall(function() return context:squad(mission.Squad[name]) end) then
+            name,index,fallback=fallback.squad,fallback.index,nil
+        end
+        slot(context,name,index)
         local director=context:slot(mission.Slot[definition.director])
         -- 0.5.0 slot handles carry no objective_count; the task groups come from the SDK catalog.
         assert(director.object_tag==definition.object and director.registry_key==definition.registry
             and director.slot_type==3 and director.slot_index==definition.director_index,
             "serial carrier director mismatch")
-        current={name=name,index=definition.indices[round]}
+        current={name=name,index=index,fallback=fallback}
         current.placement=context:squad(mission.Squad[name]):place{}
         context:set_variable(prefix.."round",round); status(context,"placement_pending")
     end
@@ -122,6 +128,15 @@ return function(mission,objective,controller,definition)
                 local placement=current.placement and event.request_key:matches(current.placement)
                 local assignment=current.assignment and event.request_key:matches(current.assignment)
                 if placement or assignment then
+                    if placement and current.fallback and event.source_generation==source
+                        and event.outcome~="transport_staged" then
+                        -- The fresh slot was refused: run this round on its side's proven carrier.
+                        local fallback=current.fallback
+                        slot(context,fallback.squad,fallback.index)
+                        current={name=fallback.squad,index=fallback.index}
+                        current.placement=context:squad(mission.Squad[fallback.squad]):place{}
+                        return
+                    end
                     if event.source_generation~=source or event.outcome~="transport_staged" then stop(context,"output_refused"); return end
                     if placement then current.placement=nil; current.transported=true; status(context,"running")
                     else current.assignment=nil; last_assigned[current.index]=true end
