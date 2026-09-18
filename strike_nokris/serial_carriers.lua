@@ -49,9 +49,10 @@ return function(mission,objective,controller,definition)
         local name=definition.squads[round]
         slot(context,name,definition.indices[round])
         local director=context:slot(mission.Slot[definition.director])
+        -- 0.5.0 slot handles carry no objective_count; the task groups come from the SDK catalog.
         assert(director.object_tag==definition.object and director.registry_key==definition.registry
-            and director.slot_type==3 and director.slot_index==definition.director_index
-            and director.objective_count==definition.objective_count,"serial carrier director mismatch")
+            and director.slot_type==3 and director.slot_index==definition.director_index,
+            "serial carrier director mismatch")
         current={name=name,index=definition.indices[round]}
         current.placement=context:squad(mission.Squad[name]):place{}
         context:set_variable(prefix.."round",round); status(context,"placement_pending")
