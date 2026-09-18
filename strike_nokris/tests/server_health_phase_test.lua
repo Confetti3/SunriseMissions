@@ -1,7 +1,6 @@
 -- Run from the repository root with a stock Lua 5.4; NOKRIS_HEALTH_CSV names run 11's
 -- nokris-health-timeline.csv (t_ms,health_q10,...), the boss's replicated health over one fight.
 package.path = "./?.lua;" .. package.path
-local gates = require("strike_nokris.server_health_phase")
 local new_provider = require("strike_nokris.native_phase_provider")
 local path = assert(os.getenv("NOKRIS_HEALTH_CSV"), "NOKRIS_HEALTH_CSV required")
 
@@ -17,7 +16,6 @@ local function reaction(phase)
     return {source_generation=SOURCE, spawn_generation=BOSS, capture_sequence=tostring(sequence),
         native_admission="reaction", health_phase=phase}
 end
-local timer = {timer_name=gates.timer}
 -- A stand-in for the encounter model: an onset moves it into the shield stage; release() returns it.
 local function fight()
     local provider = new_provider()
@@ -30,7 +28,7 @@ local function fight()
         for _, input in ipairs(inputs or {}) do
             if input.kind == "phase_onset" then
                 model.phase = model.phase + 1; model.stage = "shield"
-                onsets[#onsets+1] = {phase=model.phase, source=provider.onset_source(), event=event}
+                onsets[#onsets+1] = {phase=model.phase, event=event}
             end
         end
     end
@@ -52,38 +50,21 @@ do
     check("recorded fight gives three server onsets", #run.onsets == 3)
     for index, onset in ipairs(run.onsets) do
         check("phase " .. index .. " at level " .. expected[index],
-            onset.phase == index and math.floor(onset.event.health*1023+0.5) == expected[index]
-            and onset.source == index .. "|server")
+            onset.phase == index and math.floor(onset.event.health*1023+0.5) == expected[index])
     end
 end
 
--- 2. The hook's reaction after the server's onset is ignored, not an ordering fault.
+-- 2. The hook's gate reaction starts nothing, before or after the server's onset, and is no fault.
 do
     local run = fight()
+    run.feed(reaction(1), "on_event_native_reaction")
+    check("native reaction alone starts nothing", #run.onsets == 0)
     run.feed(damage(879), "on_event_damage_state")
-    run.feed(reaction(1), "on_event_native_reaction")
-    check("late native reaction is ignored", #run.onsets == 1 and run.provider.fallback_phase() == nil)
+    run.feed(reaction(2), "on_event_native_reaction")
+    check("server onset stands; later native reaction is ignored", #run.onsets == 1)
 end
 
--- 3. Hook first, server silent: nothing until the timer, then the fallback starts the phase.
-do
-    local run = fight()
-    run.feed(reaction(1), "on_event_native_reaction")
-    check("native reaction alone starts nothing", #run.onsets == 0 and run.provider.fallback_phase() == 1)
-    run.feed(timer, "on_event_timer_elapsed")
-    check("timer admits the fallback", #run.onsets == 1 and run.onsets[1].source == "1|native_fallback")
-end
-
--- 4. Hook first, server before the timer: one onset, and the timer is then a no-op.
-do
-    local run = fight()
-    run.feed(reaction(1), "on_event_native_reaction")
-    run.feed(damage(879), "on_event_damage_state")
-    run.feed(timer, "on_event_timer_elapsed")
-    check("server wins the race", #run.onsets == 1 and run.onsets[1].source == "1|server")
-end
-
--- 5. Traffic that is not a gate.
+-- 3. Traffic that is not a gate.
 do
     local run = fight()
     run.feed(damage(-1023), "on_event_damage_state")
@@ -91,11 +72,10 @@ do
     run.feed(damage(100, {slot_index=20}), "on_event_damage_state")
     run.feed(damage(100, {source_generation="6"}), "on_event_damage_state")
     run.feed(damage(900), "on_event_damage_state")
-    run.feed({timer_name="tick"}, "on_event_timer_elapsed")
     check("unobserved, foreign and above-floor levels start nothing", #run.onsets == 0)
 end
 
--- 6. A gate crossed while the previous release is still in flight is held, then started.
+-- 4. A gate crossed while the previous release is still in flight is held, then started.
 do
     local run = fight()
     run.feed(damage(879), "on_event_damage_state")
@@ -104,6 +84,6 @@ do
     check("crossing during release is held", #run.onsets == 1)
     run.model.stage = "damage"
     run.feed({}, "settle")
-    check("held crossing starts on the next settle", #run.onsets == 2 and run.onsets[2].source == "2|server")
+    check("held crossing starts on the next settle", #run.onsets == 2 and run.onsets[2].phase == 2)
 end
 print("ok")

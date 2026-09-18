@@ -770,7 +770,7 @@ return function(mission, controller)
     for _, name in ipairs({"on_start", "on_load", "on_event_client_state_changed", "on_event_object_state",
         "on_event_squad_state", "on_event_effect_result", "on_event_player_trigger", "on_event_trigger_entered",
         "on_event_trigger_exited", "on_event_trigger_state", "on_event_native_reaction",
-        "on_event_damage_state", "on_event_timer_elapsed"}) do
+        "on_event_damage_state"}) do
         wrap(name)
     end
     return controller

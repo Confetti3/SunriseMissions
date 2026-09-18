@@ -1,6 +1,5 @@
 -- Normal-solo health-gate authority and continuous crystal observations; no shield-child dependency.
--- Phase onsets come from the server's replicated boss health. The client hook's reaction is a fallback:
--- it is held for a short timer and only starts a phase the server never reported.
+-- Phase onsets come from the server's replicated boss health. The client hook's reaction starts nothing.
 local phases=require("strike_nokris.phase_plan")
 local gates=require("strike_nokris.server_health_phase")
 local decimal=require("strike_nokris.identity_text").positive_decimal
@@ -12,15 +11,10 @@ return function()
     local consumption_candidates,emitted_consumption={},{}
     local emitted_link,emitted_remove=false,false
     local pending_phase,pending_death
-    local fallback_phase,onset_source
     local last_capture="0"
     local capabilities={phase_onset=true,shield_ready=true,crystal_consumed=true,phase_released=true,
         boss_defeated=true,publish_result=true,result_accepted=true}
     local provider={encounter_owned=true,supports=function(kind) return capabilities[kind]==true end}
-    -- The hook's phase still waiting on the server, if any; its owner arms the fallback timer.
-    function provider.fallback_phase() return fallback_phase end
-    -- "<phase>|server" or "<phase>|native_fallback" for the newest onset.
-    function provider.onset_source() return onset_source end
     function provider.read(event,status,callback)
         local model=status and status.model
         if not model or not event then return {} end
@@ -39,40 +33,23 @@ return function()
             return value
         end
         local function onset(next_phase)
-            phase=next_phase; crystals={}; pending_phase=nil; fallback_phase=nil
+            phase=next_phase; crystals={}; pending_phase=nil
             consumption_candidates,emitted_consumption={},{}
             emitted_link,emitted_remove=false,false
             return input("phase_onset")
-        end
-        -- One admission path for both sources. Returns inputs, or nil and a reason.
-        local function admit(expected,origin)
-            if model.stage=="releasing" and status.attachment and status.attachment.active==false then
-                -- Native damage can resume before Lua receives the completed release operation.
-                pending_phase=expected
-            elseif model.stage=="opening_damage" and status.boss_population_available==false then
-                -- Retain the authenticated onset, not a timer or a manufactured phase.
-                pending_phase=expected
-            elseif model.stage=="opening_damage" or model.stage=="damage" then
-                onset_source=tostring(expected).."|"..origin
-                return {onset(expected)}
-            else return nil,"native_health_phase_order" end
-            onset_source=tostring(expected).."|"..origin
-            fallback_phase=nil
-            return {}
         end
         if callback=="on_event_damage_state" then
             local expected=model.phase+1
             if expected>3 or pending_phase or event.source_generation~=model.source
                 or not gates.reached(event,expected) then return {} end
-            -- A level seen outside a damage stage is not an ordering fault; the hook's fallback covers it.
-            local inputs=admit(expected,"server")
-            return inputs or {}
-        end
-        if callback=="on_event_timer_elapsed" and event.timer_name==gates.timer then
-            if not fallback_phase or fallback_phase~=model.phase+1 or pending_phase then
-                fallback_phase=nil; return {}
+            if model.stage=="damage"
+                or (model.stage=="opening_damage" and status.boss_population_available~=false) then
+                return {onset(expected)}
             end
-            return admit(fallback_phase,"native_fallback")
+            -- The clamp then holds this level, so the sample never repeats: keep it until the model
+            -- can take it (damage can resume before Lua receives the completed release operation).
+            pending_phase=expected
+            return {}
         end
         if callback=="on_event_native_reaction" then
             if event.source_generation~=model.source or event.spawn_generation~=model.boss
@@ -81,15 +58,8 @@ return function()
             end
             last_capture=event.capture_sequence
             if event.native_admission=="reaction" then
-                -- Legacy raw toggles carry no synchronous floor admission and cannot start mechanics.
-                if event.health_phase==0 then return {} end
-                local expected=model.phase+1
-                -- The server usually reports the gate first; its onset already covers this one.
-                if event.health_phase<=model.phase or event.health_phase==pending_phase then return {} end
-                if event.health_phase~=expected or expected>3 or pending_phase then
-                    return nil,"native_health_phase_order"
-                end
-                fallback_phase=expected
+                -- The hook's gate capture only keeps the capture sequence current for its death event.
+                return {}
             elseif event.native_admission=="boss_defeated" then
                 if model.stage=="complete" then return {} end
                 if model.stage=="releasing" and model.phase==3 and event.health_phase==3

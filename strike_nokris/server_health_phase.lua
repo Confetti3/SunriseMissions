@@ -2,7 +2,7 @@
 -- The client clamp holds the boss at the first ten-bit level at or above each floor (880, 614, 338
 -- of 1023 for 86/60/33%), so a gate is "level <= floor level", not "fraction <= floor".
 local floors={880,614,338}
-local gates={timer="nokris.phase_fallback",timer_ms=1500}
+local gates={}
 
 -- True when this damage state is the boss squad at or below `phase`'s floor.
 function gates.reached(event,phase)

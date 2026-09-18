@@ -6,7 +6,7 @@ local function positive(value) return math.type(value)=="integer" and value>0 en
 return function(mission,controller)
     local region=assert(mission.states.STATE_80F729E1_000B_0000_80F76DF7).region_index
     local held,source,request,request_stage,request_phase
-    local initial_started,last_phase=false,0
+    local initial_started,last_phase,gate_seen=false,0,nil
     local spires_started=false
     local visual_requests={}
     local fenced=false
@@ -168,8 +168,7 @@ return function(mission,controller)
         return state:variable("nokris.chant")=="transport_staged" and (before or after)
     end
     for _,name in ipairs{"on_start","on_load","on_event_client_state_changed","on_event_squad_state",
-        "on_event_object_state","on_event_player_trigger","on_event_effect_result","on_event_native_reaction",
-        "on_event_damage_state"} do
+        "on_event_object_state","on_event_player_trigger","on_event_effect_result","on_event_damage_state"} do
         local previous=controller[name]
         controller[name]=function(context,state,event)
             local visual_reload=name=="on_load" and captured_visual_probe(state)
@@ -220,19 +219,16 @@ return function(mission,controller)
                 and state:variable("nokris.chant")=="transport_staged" then
                 submit(context,"initial")
             end
-            -- Either source may open the next phase's portal: the server's replicated boss health, or
-            -- the client hook's reaction. The second to arrive finds the request or phase already taken.
-            if request or last_phase>=3 or event.source_generation~=source then return end
+            -- The server's replicated boss health opens each phase's portal. The clamp holds the gate
+            -- level, so its sample never repeats: keep it until the model is ready for the phase.
             local phase=last_phase+1
-            local native=name=="on_event_native_reaction" and event.native_admission=="reaction"
-                and event.health_phase==phase and decimal(event.capture_sequence)
-            local server=name=="on_event_damage_state" and gates.reached(event,phase)
-            if not native and not server then return end
+            if name=="on_event_damage_state" and last_phase<3 and event.source_generation==source
+                and gates.reached(event,phase) then gate_seen=phase end
+            if gate_seen~=phase or request then return end
             local view=controller.boss_status and controller.boss_status()
             local model=view and view.model
             if not model or not view.encounter_owned or view.blocked or model.source~=source
-                or not positive(model.boss) or (native and model.boss~=event.spawn_generation)
-                or model.phase+1~=phase
+                or not positive(model.boss) or model.phase+1~=phase
                 or (model.stage~="opening_damage" and model.stage~="damage") then return end
             if submit(context,"phase"..phase,phase) then
                 activate_phase_visual(context,model.boss,phase)
