@@ -31,6 +31,8 @@ local phases={
             {slot=87,symbol="PF_EXP_ULTRA_WIZARD_NOKRIS_ICE_GEYSER_2_SQ_EXP_ULTRA_WIZARD_NOKRIS_ICE_GEYSER_THRALL_AND_TROOPER",counts={0,1}},
             {slot=95,symbol="PF_EXP_ULTRA_WIZARD_NOKRIS_ICE_GEYSER_4_SQ_EXP_ULTRA_WIZARD_NOKRIS_ICE_GEYSER_THRALL_AND_TROOPER",counts={0,1}},
             {slot=32,symbol="SQ_WIZARD_G_1",counts={1}},
+            -- Retail shows two Wizard majors together in the second protected interval (video 18:46).
+            {slot=33,symbol="SQ_WIZARD_G_2",counts={1}},
         },
     },
     {
