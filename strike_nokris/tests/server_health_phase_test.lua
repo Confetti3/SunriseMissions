@@ -2,7 +2,7 @@
 --   lua strike_nokris/tests/server_health_phase_test.lua <nokris-health-timeline.csv>
 -- The timeline is run 11's replicated boss health (t_ms,health_q10,...).
 package.path = "./?.lua;" .. package.path
-local observe = require("strike_nokris.server_health_phase")()
+local observe = require("strike_nokris.server_health_phase")({{registry_key=0xC55749AB,slot_type=1,slot_index=0}})
 local path = assert(arg and arg[1] or os.getenv("NOKRIS_HEALTH_CSV"), "timeline csv path required")
 
 local crossings = {}

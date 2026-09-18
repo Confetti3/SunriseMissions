@@ -392,10 +392,17 @@ return function(mission,objective,controller,provider)
         end
     end
     -- Shadow only: proves the server sees each gate; the native reaction still drives the fight.
-    local server_phase=require("strike_nokris.server_health_phase")()
+    local server_phase
     local previous_damage=controller.on_event_damage_state
     controller.on_event_damage_state=function(context,state,event)
         if previous_damage then previous_damage(context,state,event) end
+        if not server_phase then
+            local slots={context:slot(mission.Slot.NOKRIS_BOSS_SQUAD)}
+            if mission.Slot.NOKRIS_BOSS_SQUAD_NOKRIS then
+                slots[2]=context:slot(mission.Slot.NOKRIS_BOSS_SQUAD_NOKRIS)
+            end
+            server_phase=require("strike_nokris.server_health_phase")(slots)
+        end
         local crossed=server_phase(event)
         if crossed then
             context:set_variable("nokris.server_phase",string.format("%d|%.4f|%s",crossed,event.health,

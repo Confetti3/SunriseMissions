@@ -4,12 +4,19 @@
 -- of 1023 for 86/60/33%), so a gate is "level <= ceil(floor*1023)", not "fraction <= floor".
 local floors={880,614,338}
 
-return function()
+-- slots: authored slots that may carry the boss's damage (his squad, or his bound combatant).
+return function(slots)
     local phase=0
+    local function boss(event)
+        for _,slot in ipairs(slots) do
+            if event.registry_key==slot.registry_key and event.slot_type==slot.slot_type
+                and event.slot_index==slot.slot_index then return true end
+        end
+        return false
+    end
     -- Returns the newest phase this sample crossed into, or nil.
     return function(event)
-        if event.registry_key~=0xC55749AB or event.slot_type~=1 or event.slot_index~=0
-            or type(event.health)~="number" then return nil end
+        if type(event.health)~="number" or not boss(event) then return nil end
         -- A fresh boss reports above the first floor again.
         local level=math.floor(event.health*1023+0.5)
         if level>floors[1] then phase=0 end
