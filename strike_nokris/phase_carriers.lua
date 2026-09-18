@@ -1,4 +1,5 @@
--- Reconstructed replacement transport requires the model's positive-loss command and prior zero.
+-- Reconstructed replacement transport requires the model's positive-loss command and a prior
+-- carrier not known alive.
 local record=require("strike_nokris.state_record")
 local pending_population=require("strike_nokris.pending_population")
 local identity_schema=record.schema("K1",{{name="source",kind="string",limit=20},
@@ -77,7 +78,7 @@ return function(mission,model,activation,support,objective,context,state,prefix,
         local job=jobs[member]
         if blocked or not job or not job.observed then return nil end
         return {generation=job.observed.spawn,alive=job.observed.alive,
-            ready=job.observed.alive>0 and job.assigned==true and not job.replacing}
+            ready=job.observed.alive~=0 and job.assigned==true and not job.replacing}
     end
     function adapter.client_state(event)
         if blocked then return false end
@@ -136,7 +137,7 @@ return function(mission,model,activation,support,objective,context,state,prefix,
         end
         if command.transported or (flow.serial and serial<=flow.serial) then return block("replacement_transaction_reversed") end
         local job=jobs[member]
-        if pending() or not job.observed or job.observed.alive~=0 then return false,"awaiting_prior_carrier_zero" end
+        if pending() or not job.observed or job.observed.alive>0 then return false,"awaiting_prior_carrier_zero" end
         flow.serial,flow.member,flow.status=serial,member,1
         job.replacing=true; job.assigned=false; save()
         placement=place(job); return true
@@ -169,11 +170,22 @@ return function(mission,model,activation,support,objective,context,state,prefix,
                 end
                 if not positive(event.spawn_generation) or not positive(event.sense_generation)
                     or event.population_available~=true or math.type(event.alive_count)~="integer" or event.alive_count<0 then
-                    if prior then return block("carrier_population_unknown") end
+                    -- On 0.5 a re-placed slot's new lifetime never reports its alive count, so its
+                    -- spawn generation alone admits the replacement; its population stays unknown (-1).
+                    if new_spawn and positive(event.sense_generation) then
+                        job.replacing=false; flow.status=3; save()
+                        job.observed={spawn=event.spawn_generation,counter=event.sense_generation,alive=-1,
+                            revision=event.objective_revision,group=-1}
+                        job.costs={}; save_row(member); assign(member,-1,0)
+                        return true
+                    end
+                    if prior and prior.alive>=0 then return block("carrier_population_unknown") end
                     return false
                 end
                 if new_spawn then
-                    if event.alive_count<=0 or (event.objective_revision~=nil and event.objective_revision~=0) then return false end
+                    -- The reused slot keeps the objective revision of its previous carrier.
+                    if event.alive_count<=0 or (event.objective_revision~=nil
+                        and event.objective_revision~=0 and event.objective_revision~=1) then return false end
                     prior=nil; job.replacing=false; flow.status=3; save()
                 elseif prior and event.spawn_generation~=prior.spawn then return block("unexpected_carrier_spawn") end
                 local costs={}; for task=1,5 do costs[task]=event.task_costs and event.task_costs[task] end
