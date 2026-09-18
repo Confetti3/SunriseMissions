@@ -48,11 +48,12 @@ return function(mission, objective, controller)
                     and state:variable("later.ritual_quartet.status")=="population_zero"
                     and state:variable("later.simmumah.wave")=="transport_staged"
             end},
-        {name="yellow_chambers",kind=30,reconcile_occupied=true,capture_arrival=true,index=43,volume_index=107,
-            trigger="PM_GAUNTLET_SPAWN_EXIT_THRALLS",volume="SLOT_006B_80F734C7",
+        {name="yellow_chambers",
             director="OBJ_RITUAL_TUNNEL",director_index=30,objective_count=5,
             squads={"SQ_TUNNEL_START"},squad_indices={22},
-            requires={"later.thrall_surge.entered"}},
+            -- The type-30 occupancy monitor (PM_GAUNTLET_SPAWN_EXIT_THRALLS, slot 43) never reports a
+            -- change under the 0.5 DLL. Place the tunnel knights when the player leaves the summoning room.
+            ready=function(state) return state:variable("later.thrall_surge.entered")==true end},
         {name="chamber_support",kind=31,capture_arrival=true,index=44,volume_index=111,
             trigger="PT_TUNNEL_SPAWN_SUPPORT",volume="SLOT_006F_80F734C7",
             director="OBJ_RITUAL_TUNNEL",director_index=30,objective_count=5,
