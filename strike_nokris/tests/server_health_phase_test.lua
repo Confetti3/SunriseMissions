@@ -14,6 +14,9 @@ for line in io.lines(path) do
         if phase then crossings[#crossings+1] = {phase=phase, q=tonumber(q), t=tonumber(t)} end
     end
 end
+-- An unobserved level (-1) never counts, even for the boss.
+assert(require("strike_nokris.server_health_phase")({{registry_key=0xC55749AB,slot_type=1,slot_index=0}})(
+    {registry_key=0xC55749AB, slot_type=1, slot_index=0, health=-1}) == nil)
 -- Another squad's damage never counts.
 assert(observe({registry_key=1, slot_type=1, slot_index=0, health=0.1}) == nil)
 

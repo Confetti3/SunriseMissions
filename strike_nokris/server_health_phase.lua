@@ -16,7 +16,8 @@ return function(slots)
     end
     -- Returns the newest phase this sample crossed into, or nil.
     return function(event)
-        if type(event.health)~="number" or not boss(event) then return nil end
+        -- Sense rows report -1 for a level they never observed.
+        if type(event.health)~="number" or event.health<0 or not boss(event) then return nil end
         -- A fresh boss reports above the first floor again.
         local level=math.floor(event.health*1023+0.5)
         if level>floors[1] then phase=0 end
