@@ -1,5 +1,7 @@
--- Reconstructed serial availability: a qualified inactive crystal and prior carrier known empty
--- admit the next authored carrier. Missing observations never stand in for positive relic loss.
+-- Reconstructed serial availability: the round's qualified inactive crystal admits the next
+-- authored carrier. Only a dead carrier's relic can deactivate it, so the crystal is the round's
+-- end. The carrier's own alive count cannot be: on 0.5 a re-placed slot's second lifetime never
+-- reports one (run 2026-09-17 23:51, slot 15 spawn 2: 36 reports, no alive field).
 return function(mission,objective,controller,definition)
     assert(#definition.squads>0 and #definition.squads<=6 and #definition.indices==#definition.squads)
     local prefix="carriers."..definition.name.."."
@@ -41,8 +43,7 @@ return function(mission,objective,controller,definition)
             stop(context,"crystal_obligation_reversed"); return
         end
         if current then
-            if not current.transported or current.assignment or not current.observed
-                or not current.observed.available or current.observed.alive~=0 or inactive~=round then return end
+            if not current.transported or current.assignment or inactive~=round then return end
             if round==#definition.squads then status(context,"complete"); return end
         elseif not definition.ready(state) then return end
         round=round+1
@@ -113,10 +114,6 @@ return function(mission,objective,controller,definition)
                     -- Already at revision 1 on the Host: adopt it; the cost-based regrouping
                     -- reassigns at expected revision 1 once a report echoes it with costs.
                     current.assigned=true; current.group=-1
-                end
-                if state:variable(prefix.."status")=="complete"
-                    and (not current.observed.available or current.observed.alive~=0) then
-                    stop(context,"completed_carrier_changed"); return
                 end
                 last_spawn[current.index]=event.spawn_generation
                 choose(context)
