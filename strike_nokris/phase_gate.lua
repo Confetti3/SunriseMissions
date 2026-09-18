@@ -24,7 +24,7 @@ return function(mission,model,context,state,prefix)
             status=active and "transport_staged" or "pending",native_accepted=false}
         request=nil
         if not active then
-            request=assert(context:release_nokris_phase{phase=command.phase,spawn_generation=view.boss},
+            request=assert(context:release_native_phase{phase=command.phase,spawn_generation=view.boss},
                 "native phase release requires an owned request")
         end
         return true

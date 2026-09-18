@@ -167,7 +167,7 @@ return function(mission,controller)
         return state:variable("nokris.chant")=="transport_staged" and (before or after)
     end
     for _,name in ipairs{"on_start","on_load","on_event_client_state_changed","on_event_squad_state",
-        "on_event_object_state","on_event_player_trigger","on_event_effect_result","on_event_native_nokris_reaction"} do
+        "on_event_object_state","on_event_player_trigger","on_event_effect_result","on_event_native_reaction"} do
         local previous=controller[name]
         controller[name]=function(context,state,event)
             local visual_reload=name=="on_load" and captured_visual_probe(state)
@@ -218,7 +218,7 @@ return function(mission,controller)
                 and state:variable("nokris.chant")=="transport_staged" then
                 submit(context,"initial")
             end
-            if name~="on_event_native_nokris_reaction" or request or last_phase>=3
+            if name~="on_event_native_reaction" or request or last_phase>=3
                 or event.source_generation~=source or event.native_admission~="reaction"
                 or not positive(event.health_phase) or event.health_phase~=last_phase+1
                 or not decimal(event.capture_sequence) then return end

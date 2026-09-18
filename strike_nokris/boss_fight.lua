@@ -113,7 +113,7 @@ return function(mission,objective,controller,provider)
                     local copy={kind=command.kind,transaction=command.transaction,phase=command.phase,
                         checkpoint=command.checkpoint,source=model.view().source,epoch=command.epoch,
                         host_sequence=control.host_sequence}
-                    local request=local_result and context:complete_nokris{spawn_generation=model.view().boss}
+                    local request=local_result and context:complete_native_encounter{spawn_generation=model.view().boss}
                         or provider.submit(copy)
                     if not request then stop(context,"terminal_command_not_submitted"); return end
                     terminal={request=request,transaction=command.transaction,source=copy.source,epoch=copy.epoch,staged=false}
@@ -216,7 +216,7 @@ return function(mission,objective,controller,provider)
     for _,name in ipairs{"on_start","on_load","on_event_client_state_changed","on_event_squad_state",
         "on_event_object_state","on_event_effect_result","on_event_player_trigger",
         "on_event_trigger_entered","on_event_trigger_exited","on_event_trigger_state",
-        "on_event_native_nokris_reaction"} do
+        "on_event_native_reaction"} do
         local previous=controller[name]
         controller[name]=function(context,state,event)
             if not initialized then

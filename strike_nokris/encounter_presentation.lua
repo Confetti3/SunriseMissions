@@ -103,7 +103,7 @@ return function(mission,controller)
         end
     end
     for _,name in ipairs{"on_event_client_state_changed","on_event_squad_state",
-        "on_event_object_state","on_event_effect_result","on_event_native_nokris_reaction","on_load"} do
+        "on_event_object_state","on_event_effect_result","on_event_native_reaction","on_load"} do
         local previous=controller[name]
         controller[name]=function(context,state,event)
             if previous then previous(context,state,event) end

@@ -36,7 +36,7 @@ return function()
             emitted_link,emitted_remove=false,false
             return input("phase_onset")
         end
-        if callback=="on_event_native_nokris_reaction" then
+        if callback=="on_event_native_reaction" then
             if event.source_generation~=model.source or event.spawn_generation~=model.boss
                 or not decimal(event.capture_sequence) or not after(event.capture_sequence,last_capture) then
                 return nil,"native_phase_identity_or_sequence_lost"
