@@ -10,11 +10,13 @@ local semantic_fields={"actors_retired","cause","checkpoint","crystal","generati
     "scenes_retired","success","support_retired","transaction"}
 
 -- An optional provider consumes authenticated native ingress; SDK metadata cannot enable phases.
+local gates=require("strike_nokris.server_health_phase")
 return function(mission,objective,controller,provider)
     local region=assert(mission.states.STATE_80F729E1_000B_0000_80F76DF7).region_index
     local flow_key,status_key="nokris.control","nokris.capability"
     local initialized,model,activation,attachment,support,carriers,held,source,boss,fenced,terminal
     local captured_boss_recovery,captured_observed_recovery
+    local reported_onset_source
     -- This only closes combat callbacks. It cannot grant death/terminal authority. Retained
     -- model keys already fence reload, so this incarnation-local latch needs no additional key.
     local combat_closed=false
@@ -216,7 +218,7 @@ return function(mission,objective,controller,provider)
     for _,name in ipairs{"on_start","on_load","on_event_client_state_changed","on_event_squad_state",
         "on_event_object_state","on_event_effect_result","on_event_player_trigger",
         "on_event_trigger_entered","on_event_trigger_exited","on_event_trigger_state",
-        "on_event_native_reaction"} do
+        "on_event_native_reaction","on_event_damage_state","on_event_timer_elapsed"} do
         local previous=controller[name]
         controller[name]=function(context,state,event)
             if not initialized then
@@ -389,24 +391,16 @@ return function(mission,objective,controller,provider)
             end
             advance(context,state)
             semantic(context,state,event,name)
-        end
-    end
-    -- Shadow only: proves the server sees each gate; the native reaction still drives the fight.
-    local server_phase
-    local previous_damage=controller.on_event_damage_state
-    controller.on_event_damage_state=function(context,state,event)
-        if previous_damage then previous_damage(context,state,event) end
-        if not server_phase then
-            local slots={context:slot(mission.Slot.NOKRIS_BOSS_SQUAD)}
-            if mission.Slot.NOKRIS_BOSS_SQUAD_NOKRIS then
-                slots[2]=context:slot(mission.Slot.NOKRIS_BOSS_SQUAD_NOKRIS)
+            -- The hook's phase waits this long for the server's own report before it may start one.
+            if name=="on_event_native_reaction" and provider and provider.fallback_phase
+                and provider.fallback_phase() then
+                context:start_timer(gates.timer,gates.timer_ms)
             end
-            server_phase=require("strike_nokris.server_health_phase")(slots)
-        end
-        local crossed=server_phase(event)
-        if crossed then
-            context:set_variable("nokris.server_phase",string.format("%d|%.4f|%s",crossed,event.health,
-                tostring(event.mission_sequence)))
+            local onset_source=provider and provider.onset_source and provider.onset_source()
+            if onset_source and onset_source~=reported_onset_source then
+                reported_onset_source=onset_source
+                context:set_variable("nokris.phase_source",onset_source)
+            end
         end
     end
     return controller
