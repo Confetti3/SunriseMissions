@@ -5,7 +5,7 @@ return function(mission,objective,controller)
     controller=require("strike_nokris.entry_population")(mission,objective,controller,{
         name="boss_entry",region=region,registry=0xC55749AB,object=0x80F732CE,
         director="OBJ_NOKRIS_MAIN_LOOP",director_index=4,objective_count=5,
-        squads={"NOKRIS_BOSS_SQUAD"},squad_indices={0},
+        squads={"NOKRIS_BOSS_SQUAD"},squad_indices={0},combatants={"NOKRIS_BOSS_SQUAD_NOKRIS"},
         ready=function(state) return state:variable("prefight.entry")=="arrived"
             and state:variable("later.prefight.status")=="population_zero"
             and state:variable("nokris.chant")=="transport_staged"

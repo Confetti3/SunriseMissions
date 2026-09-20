@@ -17,6 +17,10 @@ return function(mission, objective, controller, definition)
             optional=definition.optional~=nil and definition.optional[name]==true}
     end
     assert(#squads > 0 and #squads <= 6)
+    -- Combatants bound before placement, as scene spawn does, so their type-2 Sense reports health.
+    local combatants = {}
+    for index, name in ipairs(definition.combatants or {}) do combatants[index] = assert(mission.Slot[name]) end
+    local bindings
     local initialized, held, source, submitted, armed, entered, arm_sequence
     local arm_request, candidate
     local jobs = {}
@@ -109,6 +113,16 @@ return function(mission, objective, controller, definition)
         if definition.capture_arrival and not prerequisites(state) then
             diagnostic(context); return
         end
+        if #combatants > 0 and not bindings then
+            -- The binding must commit in an earlier frame than the type-1 placement.
+            bindings = {}
+            for index, slot in ipairs(combatants) do
+                bindings[index] = context:slot(slot):bind_combatant_to_squad{}
+            end
+            status(context, "binding_pending")
+            return
+        end
+        if bindings and #bindings > 0 then return end
         entered = true
         context:set_variable(prefix .. "entered", true)
         for index, squad in ipairs(squads) do
@@ -271,6 +285,17 @@ return function(mission, objective, controller, definition)
                     status(context, "armed")
                     place(context, state)
                 end
+            elseif bindings and #bindings > 0 then
+                for index, request in ipairs(bindings) do
+                    if event.request_key:matches(request) then
+                        if event.source_generation ~= source or event.outcome ~= "transport_staged" then
+                            stop(context, "binding_refused"); return
+                        end
+                        table.remove(bindings, index)
+                        if #bindings == 0 then place(context, state) end
+                        break
+                    end
+                end
             else
                 for index, job in ipairs(jobs) do
                     local placement = job.placement and event.request_key:matches(job.placement)
@@ -396,6 +421,17 @@ return function(mission, objective, controller, definition)
     end)
     if not definition.kind then
         wrap("on_event_object_state", function() end)
+    end
+    if #combatants > 0 then
+        -- Diagnostic only: records whether the bound combatant reports health at all.
+        wrap("on_event_damage_state", function(context, _, event)
+            for _, slot in ipairs(combatants) do
+                if event.source_generation == source and matches(event, context:slot(slot)) then
+                    context:set_variable(prefix .. "health", string.format("%d|%.4f|%.4f",
+                        event.revision or -1, event.health or -1, event.shield or -1))
+                end
+            end
+        end)
     end
     return controller
 end
